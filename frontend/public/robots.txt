@@ -1,0 +1,4 @@
+# DonateHub Robots
+# This file tells search engines how to crawl the site
+User-agent: *
+Disallow:

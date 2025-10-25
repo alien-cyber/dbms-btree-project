@@ -1,0 +1,437 @@
+DONATION PLATFORM - DATABASE MODEL SCHEMA
+=============================================
+
+This document provides a comprehensive overview of the database schema used in the Donation Platform project, showcasing both SQL (PostgreSQL) and NoSQL (MongoDB) database design principles.
+
+OVERVIEW
+--------
+The platform uses a hybrid database architecture:
+- PostgreSQL (SQL) for structured, transactional data
+- MongoDB (NoSQL) for analytics, rankings, and flexible data storage
+
+This design demonstrates the strengths of both database paradigms and their appropriate use cases.
+
+SQL DATABASE SCHEMA (PostgreSQL)
+=================================
+
+The SQL database contains 14 interconnected tables designed with proper normalization, foreign key relationships, and constraints.
+
+1. USERS TABLE
+--------------
+Purpose: Core user authentication and profile information
+Fields:
+- id (Primary Key, Integer, Auto-increment)
+- username (String, Unique, Indexed, Not Null)
+- email (String, Unique, Indexed, Not Null)
+- hashed_password (String, Not Null)
+- full_name (String, Not Null)
+- city (String, Not Null, Indexed) - REQUIRED for rankings
+- phone_number (String, Optional)
+- is_active (Boolean, Default: True)
+- created_at (DateTime, Default: Current Timestamp)
+- updated_at (DateTime, Default: Current Timestamp, Auto-update)
+
+Relationships:
+- One-to-Many with Donations (donor_id)
+- One-to-Many with Campaigns (creator_id)
+- One-to-One with UserProfile
+- One-to-Many with Notifications
+- One-to-Many with UserBadges
+- One-to-Many with PaymentMethods
+
+2. CAMPAIGNS TABLE
+------------------
+Purpose: Donation campaign management
+Fields:
+- id (Primary Key, Integer, Auto-increment)
+- title (String, Not Null)
+- description (Text, Optional)
+- target_amount (Float, Not Null)
+- current_amount (Float, Default: 0.0)
+- creator_id (Foreign Key → users.id, Not Null)
+- category_id (Foreign Key → categories.id, Optional)
+- status (String, Default: "active") - Values: active, completed, cancelled
+- created_at (DateTime, Default: Current Timestamp)
+- updated_at (DateTime, Default: Current Timestamp, Auto-update)
+
+Relationships:
+- Many-to-One with User (creator)
+- Many-to-One with Category
+- One-to-Many with Donations
+- One-to-Many with CampaignUpdates
+- One-to-Many with DonationGoals
+- One-to-Many with CampaignAnalytics
+
+3. DONATIONS TABLE
+------------------
+Purpose: Individual donation records
+Fields:
+- id (Primary Key, Integer, Auto-increment)
+- amount (Float, Not Null)
+- donor_id (Foreign Key → users.id, Not Null)
+- campaign_id (Foreign Key → campaigns.id, Not Null)
+- message (Text, Optional)
+- is_anonymous (Boolean, Default: False)
+- created_at (DateTime, Default: Current Timestamp)
+
+Relationships:
+- Many-to-One with User (donor)
+- Many-to-One with Campaign
+- One-to-Many with Transactions
+- One-to-Many with Refunds
+
+4. CATEGORIES TABLE
+-------------------
+Purpose: Campaign categorization
+Fields:
+- id (Primary Key, Integer, Auto-increment)
+- name (String, Unique, Not Null)
+- description (Text, Optional)
+- created_at (DateTime, Default: Current Timestamp)
+
+Relationships:
+- One-to-Many with Campaigns
+
+5. TRANSACTIONS TABLE
+---------------------
+Purpose: Payment transaction tracking
+Fields:
+- id (Primary Key, Integer, Auto-increment)
+- donation_id (Foreign Key → donations.id, Not Null)
+- transaction_type (String, Not Null) - Values: donation, refund, fee
+- amount (Float, Not Null)
+- status (String, Default: "pending") - Values: pending, completed, failed
+- payment_method (String, Optional)
+- transaction_id (String, Unique)
+- created_at (DateTime, Default: Current Timestamp)
+- updated_at (DateTime, Default: Current Timestamp, Auto-update)
+
+Relationships:
+- Many-to-One with Donation
+
+6. USER_PROFILES TABLE
+----------------------
+Purpose: Extended user information
+Fields:
+- id (Primary Key, Integer, Auto-increment)
+- user_id (Foreign Key → users.id, Unique, Not Null)
+- bio (Text, Optional)
+- profile_picture (String, Optional)
+- social_links (Text, JSON String)
+- total_donated (Float, Default: 0.0)
+- total_campaigns (Integer, Default: 0)
+- verification_status (String, Default: "unverified")
+- created_at (DateTime, Default: Current Timestamp)
+- updated_at (DateTime, Default: Current Timestamp, Auto-update)
+
+Relationships:
+- One-to-One with User
+
+7. NOTIFICATIONS TABLE
+----------------------
+Purpose: User notification system
+Fields:
+- id (Primary Key, Integer, Auto-increment)
+- user_id (Foreign Key → users.id, Not Null)
+- title (String, Not Null)
+- message (Text, Optional)
+- notification_type (String, Not Null) - Values: donation, campaign, system
+- is_read (Boolean, Default: False)
+- created_at (DateTime, Default: Current Timestamp)
+
+Relationships:
+- Many-to-One with User
+
+8. CAMPAIGN_UPDATES TABLE
+-------------------------
+Purpose: Campaign progress updates
+Fields:
+- id (Primary Key, Integer, Auto-increment)
+- campaign_id (Foreign Key → campaigns.id, Not Null)
+- title (String, Not Null)
+- content (Text, Not Null)
+- created_at (DateTime, Default: Current Timestamp)
+
+Relationships:
+- Many-to-One with Campaign
+
+9. DONATION_GOALS TABLE
+-----------------------
+Purpose: Campaign milestone tracking
+Fields:
+- id (Primary Key, Integer, Auto-increment)
+- campaign_id (Foreign Key → campaigns.id, Not Null)
+- goal_amount (Float, Not Null)
+- goal_type (String, Not Null) - Values: milestone, stretch, final
+- description (Text, Optional)
+- achieved_at (DateTime, Optional)
+- created_at (DateTime, Default: Current Timestamp)
+
+Relationships:
+- Many-to-One with Campaign
+
+10. USER_BADGES TABLE
+---------------------
+Purpose: Achievement system
+Fields:
+- id (Primary Key, Integer, Auto-increment)
+- user_id (Foreign Key → users.id, Not Null)
+- badge_type (String, Not Null) - Values: first_donation, top_donor, campaign_creator
+- badge_name (String, Not Null)
+- badge_description (Text, Optional)
+- earned_at (DateTime, Default: Current Timestamp)
+
+Relationships:
+- Many-to-One with User
+
+11. CAMPAIGN_ANALYTICS TABLE
+----------------------------
+Purpose: Campaign performance metrics
+Fields:
+- id (Primary Key, Integer, Auto-increment)
+- campaign_id (Foreign Key → campaigns.id, Not Null)
+- date (DateTime, Default: Current Timestamp)
+- views (Integer, Default: 0)
+- shares (Integer, Default: 0)
+- unique_donors (Integer, Default: 0)
+- total_donations (Float, Default: 0.0)
+
+Relationships:
+- Many-to-One with Campaign
+
+12. PAYMENT_METHODS TABLE
+-------------------------
+Purpose: User payment options
+Fields:
+- id (Primary Key, Integer, Auto-increment)
+- user_id (Foreign Key → users.id, Not Null)
+- method_type (String, Not Null) - Values: credit_card, bank_transfer, digital_wallet
+- provider (String, Not Null) - Values: stripe, paypal, etc.
+- is_default (Boolean, Default: False)
+- is_active (Boolean, Default: True)
+- created_at (DateTime, Default: Current Timestamp)
+
+Relationships:
+- Many-to-One with User
+
+13. REFUNDS TABLE
+-----------------
+Purpose: Refund management
+Fields:
+- id (Primary Key, Integer, Auto-increment)
+- donation_id (Foreign Key → donations.id, Not Null)
+- refund_amount (Float, Not Null)
+- reason (Text, Optional)
+- status (String, Default: "pending") - Values: pending, approved, rejected, processed
+- processed_at (DateTime, Optional)
+- created_at (DateTime, Default: Current Timestamp)
+
+Relationships:
+- Many-to-One with Donation
+
+14. CITY_STATISTICS TABLE
+-------------------------
+Purpose: City-level statistics (SQL backup for MongoDB)
+Fields:
+- id (Primary Key, Integer, Auto-increment)
+- city (String, Not Null, Indexed, Unique)
+- total_population (Integer, Optional)
+- total_donations (Float, Default: 0.0)
+- total_donors (Integer, Default: 0)
+- average_donation (Float, Default: 0.0)
+- donation_frequency (Float, Default: 0.0) - donations per month
+- last_updated (DateTime, Default: Current Timestamp, Auto-update)
+
+Relationships:
+- None (Reference table)
+
+NOSQL DATABASE SCHEMA (MongoDB)
+================================
+
+MongoDB collections are designed for flexible, high-performance analytics and real-time operations.
+
+1. CITY_RANKINGS COLLECTION
+---------------------------
+Purpose: Real-time city donation rankings with optimized indexing
+Document Structure:
+{
+  "_id": ObjectId,
+  "city": String (Unique, Indexed),
+  "total_donations": Number (Indexed DESC),
+  "total_donors": Number,
+  "donation_count": Number,
+  "average_donation": Number,
+  "rank": Number,
+  "donor_ids": [Array of User IDs],
+  "last_updated": Date,
+  "created_at": Date
+}
+
+Indexes:
+- Compound Index: {"total_donations": -1, "city": 1} - For ranking queries
+- Unique Index: {"city": 1} - For city lookups
+- Single Index: {"rank": 1} - For rank-based queries
+
+2. USER_ACTIVITIES COLLECTION
+-----------------------------
+Purpose: User activity logs and analytics
+Document Structure:
+{
+  "_id": ObjectId,
+  "user_id": Number (Indexed),
+  "city": String (Indexed),
+  "activity_type": String (Indexed), - Values: donation, login, campaign_create
+  "amount": Number (Optional),
+  "campaign_id": Number (Optional),
+  "timestamp": Date (Indexed DESC),
+  "metadata": Object (Flexible schema for additional data)
+}
+
+Indexes:
+- Compound Index: {"user_id": 1, "timestamp": -1} - For user activity history
+- Compound Index: {"city": 1, "activity_type": 1} - For city analytics
+- Single Index: {"timestamp": -1} - For time-based queries
+
+3. ANALYTICS COLLECTION
+-----------------------
+Purpose: Platform-wide analytics and reporting
+Document Structure:
+{
+  "_id": ObjectId,
+  "date": Date (Indexed),
+  "metric_type": String (Indexed), - Values: daily_stats, monthly_stats, campaign_performance
+  "data": Object (Flexible schema based on metric_type),
+  "created_at": Date
+}
+
+Indexes:
+- Compound Index: {"date": -1, "metric_type": 1} - For time-series analytics
+- Single Index: {"metric_type": 1} - For metric-specific queries
+
+DATABASE DESIGN PRINCIPLES
+==========================
+
+1. NORMALIZATION
+----------------
+- Tables are normalized to 3NF (Third Normal Form)
+- Eliminates data redundancy
+- Ensures data integrity through foreign key constraints
+- Example: User information separated into users and user_profiles tables
+
+2. REFERENTIAL INTEGRITY
+-----------------------
+- Foreign key constraints ensure data consistency
+- Cascade operations for related data
+- Example: Deleting a user cascades to their donations and campaigns
+
+3. INDEXING STRATEGY
+-------------------
+SQL Indexes:
+- Primary keys (automatic)
+- Foreign keys (automatic)
+- Frequently queried columns (username, email, city)
+- Composite indexes for complex queries
+
+MongoDB Indexes:
+- Compound indexes for multi-field queries
+- Unique indexes for data integrity
+- Time-based indexes for analytics
+- Geospatial indexes (can be added for location-based features)
+
+4. TRANSACTION MANAGEMENT
+-------------------------
+- ACID compliance for critical operations
+- Transaction isolation levels
+- Rollback capabilities for failed operations
+- Example: Donation creation involves multiple table updates
+
+5. SCALABILITY CONSIDERATIONS
+----------------------------
+- Horizontal partitioning potential
+- Read replicas for analytics
+- Caching strategies
+- Connection pooling
+
+6. DATA CONSISTENCY
+------------------
+- SQL database for transactional consistency
+- MongoDB for eventual consistency in analytics
+- Synchronization between SQL and NoSQL systems
+- Real-time updates for city rankings
+
+USE CASES DEMONSTRATION
+=======================
+
+1. USER REGISTRATION
+-------------------
+- Insert into users table
+- Create user_profile record
+- Initialize city statistics in MongoDB
+- Create notification record
+
+2. DONATION PROCESSING
+---------------------
+- Create donation record
+- Update campaign current_amount
+- Create transaction record
+- Update user profile total_donated
+- Update city rankings in MongoDB
+- Log user activity
+- Send notifications
+
+3. CITY RANKING QUERIES
+-----------------------
+- MongoDB compound index enables fast ranking queries
+- Real-time updates without SQL table locks
+- Flexible aggregation for complex analytics
+
+4. ANALYTICS AND REPORTING
+--------------------------
+- Time-series data in MongoDB
+- Complex aggregations for insights
+- Real-time dashboard updates
+- Historical trend analysis
+
+PERFORMANCE OPTIMIZATION
+========================
+
+1. QUERY OPTIMIZATION
+---------------------
+- Proper indexing strategy
+- Query execution plan analysis
+- Connection pooling
+- Prepared statements
+
+2. CACHING STRATEGIES
+---------------------
+- Application-level caching
+- Database query result caching
+- Session management
+- Real-time data synchronization
+
+3. MONITORING AND MAINTENANCE
+-----------------------------
+- Database performance metrics
+- Index usage analysis
+- Query performance monitoring
+- Automated maintenance tasks
+
+CONCLUSION
+==========
+
+This hybrid database architecture demonstrates:
+
+1. **SQL Strengths**: ACID compliance, complex relationships, data integrity
+2. **NoSQL Strengths**: Flexible schema, high performance, horizontal scaling
+3. **Best Practices**: Proper normalization, indexing, transaction management
+4. **Real-world Application**: Practical use cases with performance considerations
+
+The design showcases advanced DBMS concepts including:
+- Multi-database architecture
+- Indexing strategies
+- Transaction management
+- Data consistency models
+- Performance optimization
+- Scalability planning
+
+This schema provides a solid foundation for a production-ready donation platform while demonstrating comprehensive understanding of database management systems.
